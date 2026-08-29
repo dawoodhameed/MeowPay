@@ -28,6 +28,15 @@ class LedgerQueryService(
 ) {
     fun listCats(): List<CatWithWalletRow> = catRepository.findAllWithWallets()
 
+    /**
+     * Payee lookup. Returning the name lets the client show *who* is about to be
+     * paid before the sender commits to it -- the check that catches a mistyped
+     * digit while it is still free to catch.
+     */
+    fun findByAccountNumber(accountNumber: String): CatWithWalletRow =
+        catRepository.findByAccountNumber(accountNumber)
+            ?: throw AccountNotFoundException(accountNumber)
+
     fun getWallet(walletId: UUID) = walletRepository.findById(walletId).orElseThrow { WalletNotFoundException(walletId) }
 
     fun listTransfers(

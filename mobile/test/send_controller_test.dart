@@ -17,10 +17,21 @@ MockClient _client({
 
 const _catsJson = '''
 [
-  {"id":"c1","name":"Whiskers","avatarUrl":null,"walletId":"w1","balance":100},
-  {"id":"c2","name":"Mittens","avatarUrl":null,"walletId":"w2","balance":50}
+  {"id":"c1","name":"Whiskers","accountNumber":"10000001","avatarUrl":null,"walletId":"w1","balance":100},
+  {"id":"c2","name":"Mittens","accountNumber":"10000002","avatarUrl":null,"walletId":"w2","balance":50}
 ]
 ''';
+
+const _mittensJson =
+    '{"id":"c2","name":"Mittens","accountNumber":"10000002","avatarUrl":null,"walletId":"w2","balance":50}';
+
+/// Signs in as Whiskers and resolves Mittens as the payee, which is the state every
+/// send starts from.
+Future<void> _readyToSend(SendController c) async {
+  await c.loadCats();
+  c.signIn(c.cats.first);
+  await c.lookUpPayee('10000002');
+}
 
 SendController _controllerWith(
   Future<http.Response> Function(http.Request) handler,
@@ -31,7 +42,7 @@ SendController _controllerWith(
 
 void main() {
   group('loading cats', () {
-    test('selects a sender and a different recipient by default', () async {
+    test('loads cats without signing anyone in', () async {
       final controller = _controllerWith(
         (_) async => http.Response(_catsJson, 200),
       );
@@ -39,8 +50,9 @@ void main() {
       await controller.loadCats();
 
       expect(controller.cats, hasLength(2));
-      expect(controller.sender!.name, 'Whiskers');
-      expect(controller.recipient!.name, 'Mittens');
+      expect(controller.cats.first.accountNumber, '10000001');
+      // Identity is chosen on the sign-in screen, never assumed.
+      expect(controller.isSignedIn, isFalse);
       expect(controller.loadError, isNull);
     });
 
@@ -62,6 +74,7 @@ void main() {
     setUp(() async {
       controller = _controllerWith((_) async => http.Response(_catsJson, 200));
       await controller.loadCats();
+      controller.signIn(controller.cats.first); // Whiskers, 100 treats
     });
 
     test('rejects empty, non-numeric, zero and negative amounts', () {
@@ -74,7 +87,7 @@ void main() {
       expect(controller.validateAmount('-5'), 'Must be more than zero');
     });
 
-    test('rejects more than the sender holds', () {
+    test('rejects more than the signed-in cat holds', () {
       expect(controller.validateAmount('101'), 'Only 100 treats available');
       expect(controller.validateAmount('100'), isNull);
     });
@@ -87,6 +100,9 @@ void main() {
       var attempt = 0;
 
       final controller = _controllerWith((request) async {
+        if (request.url.path.contains('by-account')) {
+          return http.Response(_mittensJson, 200);
+        }
         if (request.method == 'GET') return http.Response(_catsJson, 200);
         keysSeen.add(request.headers['X-Idempotency-Key']!);
         attempt++;
@@ -98,7 +114,7 @@ void main() {
         );
       });
 
-      await controller.loadCats();
+      await _readyToSend(controller);
       await controller.send(10);
 
       expect(controller.status, SendStatus.failure);
@@ -117,6 +133,9 @@ void main() {
 
     test('retires the key when the ledger refuses the transfer', () async {
       final controller = _controllerWith((request) async {
+        if (request.url.path.contains('by-account')) {
+          return http.Response(_mittensJson, 200);
+        }
         if (request.method == 'GET') return http.Response(_catsJson, 200);
         return http.Response(
           jsonEncode({
@@ -128,7 +147,7 @@ void main() {
         );
       });
 
-      await controller.loadCats();
+      await _readyToSend(controller);
       await controller.send(500);
 
       expect(controller.status, SendStatus.failure);
@@ -141,6 +160,9 @@ void main() {
     test('uses a fresh key for each successful send', () async {
       final keysSeen = <String>[];
       final controller = _controllerWith((request) async {
+        if (request.url.path.contains('by-account')) {
+          return http.Response(_mittensJson, 200);
+        }
         if (request.method == 'GET') return http.Response(_catsJson, 200);
         keysSeen.add(request.headers['X-Idempotency-Key']!);
         return http.Response(
@@ -149,8 +171,9 @@ void main() {
         );
       });
 
-      await controller.loadCats();
+      await _readyToSend(controller);
       await controller.send(5);
+      await _readyToSend(controller);
       await controller.send(5);
 
       expect(keysSeen, hasLength(2));
@@ -158,20 +181,91 @@ void main() {
     });
   });
 
-  group('selection rules', () {
-    test('clears a recipient that becomes the sender', () async {
-      final controller = _controllerWith(
-        (_) async => http.Response(_catsJson, 200),
-      );
+  group('payee lookup', () {
+    test('resolves an account number to a payee and advances the step', () async {
+      final controller = _controllerWith((request) async {
+        if (request.url.path.contains('by-account')) {
+          return http.Response(_mittensJson, 200);
+        }
+        return http.Response(_catsJson, 200);
+      });
       await controller.loadCats();
+      controller.signIn(controller.cats.first);
 
-      expect(controller.recipient!.name, 'Mittens');
-      controller.selectSender(controller.cats[1]); // Mittens
+      await controller.lookUpPayee('10000002');
 
-      // A cat cannot send to itself, so the now-invalid recipient is dropped
-      // rather than left for the server to reject.
-      expect(controller.sender!.name, 'Mittens');
-      expect(controller.recipient, isNull);
+      // Naming the payee before an amount is entered is what makes a mistyped
+      // digit cheap to catch.
+      expect(controller.payee!.name, 'Mittens');
+      expect(controller.step, SendStep.enterAmount);
+      expect(controller.lookupError, isNull);
+    });
+
+    test('rejects an account number that is not eight digits', () async {
+      final controller = _controllerWith((_) async => http.Response(_catsJson, 200));
+      await controller.loadCats();
+      controller.signIn(controller.cats.first);
+
+      await controller.lookUpPayee('123');
+
+      expect(controller.lookupError, 'Account numbers are 8 digits');
+      expect(controller.step, SendStep.enterPayee);
+    });
+
+    test('refuses your own account before making a request', () async {
+      var requests = 0;
+      final controller = _controllerWith((request) async {
+        if (request.url.path.contains('by-account')) requests++;
+        return http.Response(_catsJson, 200);
+      });
+      await controller.loadCats();
+      controller.signIn(controller.cats.first); // Whiskers, 10000001
+
+      await controller.lookUpPayee('10000001');
+
+      expect(controller.lookupError, 'That is your own account');
+      expect(requests, 0);
+    });
+
+    test('surfaces an unknown account number', () async {
+      final controller = _controllerWith((request) async {
+        if (request.url.path.contains('by-account')) {
+          return http.Response(
+            jsonEncode({
+              'type': 'https://meowpay.co/problems/account-not-found',
+              'title': 'No cat with that account number',
+            }),
+            404,
+          );
+        }
+        return http.Response(_catsJson, 200);
+      });
+      await controller.loadCats();
+      controller.signIn(controller.cats.first);
+
+      await controller.lookUpPayee('99999999');
+
+      expect(controller.lookupError, 'No cat has that account number.');
+      expect(controller.step, SendStep.enterPayee);
+    });
+  });
+
+  group('sign in', () {
+    test('signing out clears the payee and any pending key', () async {
+      final controller = _controllerWith((request) async {
+        if (request.url.path.contains('by-account')) {
+          return http.Response(_mittensJson, 200);
+        }
+        return http.Response(_catsJson, 200);
+      });
+      await _readyToSend(controller);
+      expect(controller.payee, isNotNull);
+
+      controller.signOut();
+
+      expect(controller.isSignedIn, isFalse);
+      expect(controller.payee, isNull);
+      expect(controller.step, SendStep.enterPayee);
     });
   });
 }

@@ -12,6 +12,10 @@ sealed class TransferException(message: String) : RuntimeException(message)
 class WalletNotFoundException(val walletId: UUID) :
     TransferException("Wallet $walletId does not exist")
 
+/** No cat holds the account number the sender typed. */
+class AccountNotFoundException(val accountNumber: String) :
+    TransferException("No cat holds account $accountNumber")
+
 class SelfTransferException :
     TransferException("A cat cannot send treats to itself")
 

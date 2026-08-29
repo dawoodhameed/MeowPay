@@ -21,6 +21,15 @@ class LedgerController(
     @GetMapping("/cats")
     fun listCats(): List<CatResponse> = ledgerQueryService.listCats().map(CatResponse::from)
 
+    /**
+     * Resolves the account number a sender typed into the payee it belongs to, so
+     * the app can show who is about to be paid before the sender commits.
+     */
+    @GetMapping("/cats/by-account/{accountNumber}")
+    fun findByAccountNumber(
+        @PathVariable accountNumber: String,
+    ): CatResponse = CatResponse.from(ledgerQueryService.findByAccountNumber(accountNumber))
+
     @GetMapping("/wallets/{walletId}")
     fun getWallet(
         @PathVariable walletId: UUID,

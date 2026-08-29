@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'api/meowpay_api.dart';
-import 'screens/send_treats_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/sign_in_screen.dart';
 import 'state/send_controller.dart';
+import 'theme.dart';
 
 void main() => runApp(const MeowPayApp());
 
@@ -18,27 +20,31 @@ class _MeowPayAppState extends State<MeowPayApp> {
   late final SendController _controller = SendController(api: _api);
 
   @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onChange);
+    _controller.loadCats();
+  }
+
+  @override
   void dispose() {
+    _controller.removeListener(_onChange);
     _controller.dispose();
     _api.dispose();
     super.dispose();
   }
+
+  void _onChange() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'MeowPay',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF08090C),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3DDC97),
-          brightness: Brightness.dark,
-        ),
-      ),
-      home: SendTreatsScreen(controller: _controller),
+      theme: meowTheme(),
+      home: _controller.isSignedIn
+          ? HomeScreen(controller: _controller)
+          : SignInScreen(controller: _controller),
     );
   }
 }

@@ -23,13 +23,26 @@ class LedgerFixture(
 ) {
     fun resetLedger() {
         jdbcTemplate.execute("TRUNCATE transfers, wallets, cats CASCADE")
+        accountSequence = 0
+    }
+
+    private var accountSequence = 0
+
+    /** Unique per test, so the account-number index is never the reason a test fails. */
+    private fun nextAccountNumber(): String {
+        accountSequence += 1
+        return "9000%04d".format(accountSequence)
     }
 
     fun createCatWithWallet(
         name: String,
         balance: Long,
+        accountNumber: String = nextAccountNumber(),
     ): Wallet {
-        val cat = catRepository.save(Cat(id = UUID.randomUUID(), name = name))
+        val cat =
+            catRepository.save(
+                Cat(id = UUID.randomUUID(), name = name, accountNumber = accountNumber),
+            )
         return walletRepository.save(
             Wallet(id = UUID.randomUUID(), catId = cat.id, balance = balance),
         )

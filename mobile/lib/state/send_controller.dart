@@ -6,6 +6,13 @@ import '../api/models.dart';
 
 enum SendStatus { idle, loading, success, failure }
 
+/// How far through the send the user is.
+///
+/// Entering a payee and entering an amount are separate steps on purpose: it puts
+/// a confirmation of *who* is being paid between typing an account number and
+/// committing money to it, which is where a mistyped digit is still free to catch.
+enum SendStep { enterPayee, enterAmount }
+
 class SendController extends ChangeNotifier {
   SendController({required MeowPayApi api, Uuid? uuid})
       : _api = api,
@@ -15,30 +22,24 @@ class SendController extends ChangeNotifier {
   final Uuid _uuid;
 
   List<Cat> cats = const [];
-  Cat? sender;
-  Cat? recipient;
+  Cat? signedInAs;
+  Cat? payee;
 
+  SendStep step = SendStep.enterPayee;
   SendStatus status = SendStatus.idle;
   String? message;
   bool loadingCats = true;
   String? loadError;
+  bool lookingUp = false;
+  String? lookupError;
 
-  /// The key for the transfer the user is currently trying to make.
-  ///
-  /// Held across retries on purpose. If the first attempt times out, the server
-  /// may have committed it -- the response is what went missing, not necessarily
-  /// the transfer. Retrying with the same key lets the server recognise the
-  /// duplicate and replay the original instead of moving treats twice. Generating
-  /// a fresh key per attempt would turn one intent into several transfers, which
-  /// is the exact bug idempotency keys exist to prevent.
-  ///
-  /// Cleared once the outcome is known: on success, and on a business rejection
-  /// (which is final -- the ledger did not change and the next attempt is a new
-  /// intent).
+  /// Held across retries: see [send].
   String? _pendingKey;
 
   @visibleForTesting
   String? get pendingKey => _pendingKey;
+
+  bool get isSignedIn => signedInAs != null;
 
   Future<void> loadCats() async {
     loadingCats = true;
@@ -47,14 +48,13 @@ class SendController extends ChangeNotifier {
 
     try {
       cats = await _api.listCats();
-      // Keep the current selections pointed at fresh objects so balances update,
-      // rather than resetting the form under the user on every refresh.
-      sender = _reselect(sender) ?? (cats.isNotEmpty ? cats.first : null);
-      recipient = _reselect(recipient) ??
-          cats.cast<Cat?>().firstWhere(
-                (cat) => cat!.id != sender?.id,
-                orElse: () => null,
-              );
+      // Keep the signed-in cat pointed at a fresh object so its balance updates
+      // without signing the user out.
+      if (signedInAs != null) {
+        for (final cat in cats) {
+          if (cat.id == signedInAs!.id) signedInAs = cat;
+        }
+      }
       loadError = null;
     } on NetworkFailure {
       loadError = 'Cannot reach MeowPay. Check the backend is running.';
@@ -66,30 +66,60 @@ class SendController extends ChangeNotifier {
     }
   }
 
-  Cat? _reselect(Cat? previous) {
-    if (previous == null) return null;
-    for (final cat in cats) {
-      if (cat.id == previous.id) return cat;
+  void signIn(Cat cat) {
+    signedInAs = cat;
+    _resetSend();
+    notifyListeners();
+  }
+
+  void signOut() {
+    signedInAs = null;
+    _resetSend();
+    notifyListeners();
+  }
+
+  /// Looks the typed account number up and, if it resolves, moves to the amount step.
+  Future<void> lookUpPayee(String accountNumber) async {
+    final trimmed = accountNumber.replaceAll(' ', '').trim();
+    lookupError = null;
+
+    if (trimmed.length != 8) {
+      lookupError = 'Account numbers are 8 digits';
+      notifyListeners();
+      return;
     }
-    return null;
+    // Checked before the request: sending to yourself is refused by the ledger
+    // anyway, but saying so immediately is clearer than a round trip to find out.
+    if (trimmed == signedInAs?.accountNumber) {
+      lookupError = 'That is your own account';
+      notifyListeners();
+      return;
+    }
+
+    lookingUp = true;
+    notifyListeners();
+
+    try {
+      payee = await _api.lookupAccount(trimmed);
+      step = SendStep.enterAmount;
+      lookupError = null;
+    } on ApiProblem catch (e) {
+      lookupError = e.userMessage;
+    } on NetworkFailure {
+      lookupError = 'Cannot reach MeowPay right now.';
+    } finally {
+      lookingUp = false;
+      notifyListeners();
+    }
   }
 
-  void selectSender(Cat cat) {
-    sender = cat;
-    // A cat cannot send to itself, so clear a recipient that just became invalid
-    // rather than letting the user submit a request the server will refuse.
-    if (recipient?.id == cat.id) recipient = null;
+  void changePayee() {
+    payee = null;
+    step = SendStep.enterPayee;
     _clearResult();
     notifyListeners();
   }
 
-  void selectRecipient(Cat cat) {
-    recipient = cat;
-    _clearResult();
-    notifyListeners();
-  }
-
-  /// Validates the typed amount, returning an error message or null.
   String? validateAmount(String? raw) {
     final trimmed = (raw ?? '').trim();
     if (trimmed.isEmpty) return 'Enter an amount';
@@ -99,22 +129,22 @@ class SendController extends ChangeNotifier {
     final amount = int.tryParse(trimmed);
     if (amount == null) return 'Whole numbers only';
     if (amount <= 0) return 'Must be more than zero';
-    if (sender != null && amount > sender!.balance) {
-      return 'Only ${sender!.balance} treats available';
+    if (signedInAs != null && amount > signedInAs!.balance) {
+      return 'Only ${signedInAs!.balance} treats available';
     }
     return null;
   }
 
   Future<void> send(int amount) async {
-    final from = sender;
-    final to = recipient;
+    final from = signedInAs;
+    final to = payee;
     if (from == null || to == null) return;
 
     status = SendStatus.loading;
     message = null;
     notifyListeners();
 
-    // Reuse the pending key if this is a retry of the same intent.
+    // Reused if this is a retry of the same intent -- see the catch blocks.
     final key = _pendingKey ??= _uuid.v4();
 
     try {
@@ -129,21 +159,32 @@ class SendController extends ChangeNotifier {
       status = SendStatus.success;
       message = 'Sent ${transfer.amount} treats to ${to.name}. '
           '${transfer.senderBalanceAfter} left.';
+      step = SendStep.enterPayee;
+      payee = null;
       await loadCats();
     } on ApiProblem catch (e) {
-      // The ledger considered the request and refused it. Nothing moved, and the
-      // next attempt is a new intent, so the key is retired.
+      // The ledger considered the request and refused it. Nothing moved, so the
+      // next attempt is a new intent and the key is retired.
       _pendingKey = null;
       status = SendStatus.failure;
       message = e.userMessage;
     } on NetworkFailure {
-      // The outcome is genuinely unknown. Keep the key so a retry is recognised
-      // as the same transfer rather than becoming a second one.
+      // The outcome is unknown -- the transfer may have committed and only the
+      // response gone missing. Keeping the key means a retry is recognised as the
+      // same transfer rather than becoming a second one.
       status = SendStatus.failure;
       message = 'Could not reach MeowPay. Retrying is safe.';
     } finally {
       notifyListeners();
     }
+  }
+
+  void _resetSend() {
+    payee = null;
+    step = SendStep.enterPayee;
+    lookupError = null;
+    _pendingKey = null;
+    _clearResult();
   }
 
   void _clearResult() {

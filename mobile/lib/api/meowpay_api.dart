@@ -42,6 +42,19 @@ class MeowPayApi {
         .toList();
   }
 
+  /// Resolves an account number to the cat that holds it.
+  ///
+  /// Server-side rather than a filter over the already-loaded list: matching
+  /// locally only works while every account is on the device, which stops being
+  /// true past a demo.
+  Future<Cat> lookupAccount(String accountNumber) async {
+    final response = await _send(() => _client.get(
+          Uri.parse('$_baseUrl/api/v1/cats/by-account/$accountNumber'),
+          headers: const {'Accept': 'application/json'},
+        ));
+    return Cat.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
   /// Sends treats.
   ///
   /// [idempotencyKey] is supplied by the caller rather than generated here, and

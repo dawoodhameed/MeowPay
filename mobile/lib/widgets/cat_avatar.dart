@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 /// often than it looks over a handful of names, and two cats sharing a colour is
 /// worse than none.
 const _palette = <Color>[
-  Color(0xFF3DDC97),
-  Color(0xFF7AA2FF),
-  Color(0xFFFFB56B),
-  Color(0xFFD68CFF),
-  Color(0xFFFF8B6B),
+  Color(0xFFFF7B66), // SadaPay coral
+  Color(0xFF164A64), // steel
+  Color(0xFF0E9F6E), // positive green
+  Color(0xFF8C5BD8),
+  Color(0xFFE08A2E),
 ];
 
 Color catColor(int index) => _palette[index % _palette.length];

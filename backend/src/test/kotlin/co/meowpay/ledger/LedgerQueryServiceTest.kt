@@ -1,5 +1,6 @@
 package co.meowpay.ledger
 
+import co.meowpay.service.AccountNotFoundException
 import co.meowpay.service.InvalidCursorException
 import co.meowpay.service.LedgerQueryService
 import co.meowpay.service.TransferCommand
@@ -37,6 +38,24 @@ class LedgerQueryServiceTest
             assertThat(cats.map { it.catName }).containsExactly("Luna", "Mittens", "Whiskers")
             assertThat(cats.map { it.balance }).containsExactly(250, 50, 100)
             assertThat(cats).allSatisfy { assertThat(it.walletId).isNotNull() }
+        }
+
+        @Test
+        fun `resolves a payee from an account number`() {
+            fixture.createCatWithWallet("Mittens", balance = 50, accountNumber = "10000002")
+
+            val payee = ledgerQueryService.findByAccountNumber("10000002")
+
+            // The name is what the sender confirms before committing to the transfer.
+            assertThat(payee.catName).isEqualTo("Mittens")
+            assertThat(payee.walletId).isNotNull()
+        }
+
+        @Test
+        fun `rejects an unknown account number`() {
+            assertThatThrownBy {
+                ledgerQueryService.findByAccountNumber("00000000")
+            }.isInstanceOf(AccountNotFoundException::class.java)
         }
 
         @Test
