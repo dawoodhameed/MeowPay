@@ -43,6 +43,13 @@ class Transfer(
     val recipientWalletId: UUID,
     @Column(name = "amount", nullable = false, updatable = false)
     val amount: Long,
+    /**
+     * The sender's balance immediately after this transfer committed. Stored rather
+     * than derived so a replay returns the original figure: a balance read at replay
+     * time reflects every transfer since, not this one.
+     */
+    @Column(name = "sender_balance_after", nullable = false, updatable = false)
+    val senderBalanceAfter: Long,
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, updatable = false)
     val status: TransferStatus,
