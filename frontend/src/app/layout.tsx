@@ -1,10 +1,10 @@
-import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
-import './globals.css';
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'MeowPay Ledger',
-  description: 'Transaction ledger for MeowPay',
+  title: "MeowPay Ledger",
+  description: "Transaction ledger for MeowPay",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

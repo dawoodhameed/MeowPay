@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type PollingState<T> = {
   data: T | null;
@@ -49,7 +49,7 @@ export function usePolling<T>(
       if (controller.signal.aborted) return;
       setState((prev) => ({
         ...prev,
-        error: error instanceof Error ? error : new Error('Request failed'),
+        error: error instanceof Error ? error : new Error("Request failed"),
         loading: false,
       }));
     }
