@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #07080a;
+  --color-surface: #0e1014;
+  --color-raised: #14171d;
+  --color-line: #22262f;
+  --color-muted: #7b8496;
+  --color-text: #e8eaef;
+  --color-credit: #3ddc97;
+  --color-debit: #ff7a6b;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-ink);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Digits in the balance and amount columns must line up between rows; the
+   proportional figures the UI font ships by default make columns of numbers
+   visibly ragged. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
