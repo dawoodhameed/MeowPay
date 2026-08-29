@@ -5,6 +5,11 @@ spring:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/meowpay}
     username: ${DATABASE_USER:meowpay}
     password: ${DATABASE_PASSWORD:meowpay}
+    hikari:
+      # A pathological lock wait should fail fast as a retryable 503 rather than
+      # pinning a request thread indefinitely. Ordered acquisition means this should
+      # never fire; if it does, it is a signal worth alerting on.
+      connection-init-sql: SET lock_timeout = '3s'
   jpa:
     hibernate:
       ddl-auto: validate
