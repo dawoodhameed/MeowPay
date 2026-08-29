@@ -19,3 +19,18 @@
 - Propose an architectural plan before generating code.
 - Implement incrementally; write clean, idiomatic Kotlin and Dart code.
 - Never write mocks for business concurrency—test against real PostgreSQL via Testcontainers/Docker.
+
+## Development Workflow
+- **Never commit to `main`.** Every change lands via a pull request — see `/open-pr`.
+- Branch naming: `<type>/<kebab-topic>` (`feat`, `fix`, `test`, `refactor`, `chore`, `docs`).
+- Before opening a PR, run `/review-gate`. Fix everything under *Must fix* first.
+- Commit messages follow `/commit-message`. The pre-commit hook (`scripts/install-hooks.sh`) runs
+  ktlint, ESLint, tsc and `flutter analyze` — do not bypass it with `--no-verify`.
+- Never report a check as passing without having run it and seen the output.
+
+## Repository Tooling
+Skills (`/name`): `verify-slice`, `ledger-audit`, `review-gate`, `open-pr`, `commit-message`,
+`database-review`, `api-design`.
+
+Review agents: `code-reviewer`, `fintech-reviewer`, `security-reviewer`, `test-engineer`,
+`architecture-reviewer`. All are read-only and report rather than edit.
