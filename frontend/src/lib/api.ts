@@ -1,6 +1,7 @@
 export type Cat = {
   id: string;
   name: string;
+  accountNumber: string;
   avatarUrl: string | null;
   walletId: string;
   balance: number;

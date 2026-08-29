@@ -1,37 +1,52 @@
 @import "tailwindcss";
 
+/* Sampled from sadapay.pk, and identical to the palette the Flutter app uses --
+   the two surfaces are the same product and should not disagree about what the
+   brand looks like. */
 @theme {
-  --color-ink: #08090c;
-  --color-surface: #0d0f14;
-  --color-raised: #12151b;
-  --color-line: #1e222b;
-  --color-line-soft: #171b22;
-  --color-muted: #6f7889;
-  --color-dim: #949cad;
-  --color-text: #eceef2;
-  --color-accent: #3ddc97;
-  --color-warn: #ff8b6b;
+  --color-canvas: #fafafa;
+  --color-surface: #ffffff;
+  --color-blush: #fff2f0;
+  --color-line: #e8eaec;
+  --color-navy: #072333;
+  --color-steel: #164a64;
+  --color-slate: #5a6063;
+  /* Reserved for decorative use. Small text uses --color-slate: #849199 measures
+     3.2:1 on white, below the 4.5 threshold for anything at this size. */
+  --color-muted: #849199;
+  --color-coral: #ff7b66;
+  --color-coral-ink: #8c2e1e;
+  /* Darker than SadaPay's own green: theirs is a fill colour, and at 12px bold on
+     white it lands at 3.4:1 against a 4.5 requirement. This is the same hue, taken
+     down until small text passes. */
+  --color-positive: #0b7a55;
 }
 
 html,
 body {
-  background: var(--color-ink);
-  color: var(--color-text);
+  background: var(--color-canvas);
+  color: var(--color-navy);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Columns of figures must align between rows; the UI font's proportional digits
-   make a column of balances visibly ragged. */
+/* Columns of figures must align between rows; proportional digits make a column
+   of balances visibly ragged. */
 .tabular {
   font-variant-numeric: tabular-nums;
 }
 
+/* SadaPay sets large type heavy and tight. */
+.headline {
+  font-weight: 800;
+  letter-spacing: -0.8px;
+}
+
 /* A new ledger row announces itself once, then settles. Without it the table
-   changes under the reader with no acknowledgement that anything happened. */
+   changes under the reader with nothing to acknowledge that it did. */
 @keyframes settle {
   from {
-    background-color: color-mix(in oklab, var(--color-accent) 14%, transparent);
+    background-color: color-mix(in oklab, var(--color-coral) 16%, transparent);
   }
   to {
     background-color: transparent;
@@ -44,7 +59,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .row-new,
-  .animate-pulse {
+  .animate-pulse,
+  .animate-ping {
     animation: none;
   }
 }
