@@ -7,8 +7,11 @@ spring:
     password: ${DATABASE_PASSWORD:meowpay}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 server:
   port: 8080
