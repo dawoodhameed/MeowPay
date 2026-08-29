@@ -30,6 +30,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      # Actuator's health check includes the datasource, so "healthy" means the
+      # ledger is genuinely usable rather than just that the JVM is up.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      # Migrations run at boot, so the first checks are expected to fail while
+      # Flyway works. start_period keeps those from counting as failures.
+      start_period: 40s
 
   frontend:
     build: ./frontend
@@ -43,7 +53,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   # The Flutter app compiled to web and served by nginx, which also proxies /api
   # to the backend. Docker cannot render a native iOS or Android screen, so this
@@ -55,7 +66,8 @@ services:
     ports:
       - "8081:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   meowpay-pgdata:
