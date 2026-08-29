@@ -11,6 +11,7 @@ import java.util.UUID
 interface CatWithWalletRow {
     val catId: UUID
     val catName: String
+    val accountNumber: String
     val avatarUrl: String?
     val walletId: UUID
     val balance: Long

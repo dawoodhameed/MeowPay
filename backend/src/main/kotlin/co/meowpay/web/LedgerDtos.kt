@@ -8,6 +8,7 @@ import java.util.UUID
 data class CatResponse(
     val id: UUID,
     val name: String,
+    val accountNumber: String,
     val avatarUrl: String?,
     val walletId: UUID,
     val balance: Long,
@@ -17,6 +18,7 @@ data class CatResponse(
             CatResponse(
                 id = row.catId,
                 name = row.catName,
+                accountNumber = row.accountNumber,
                 avatarUrl = row.avatarUrl,
                 walletId = row.walletId,
                 balance = row.balance,

@@ -3,18 +3,23 @@ class Cat {
   const Cat({
     required this.id,
     required this.name,
+    required this.accountNumber,
     required this.walletId,
     required this.balance,
   });
 
   final String id;
   final String name;
+
+  /// The short identifier another cat types to send here.
+  final String accountNumber;
   final String walletId;
   final int balance;
 
   factory Cat.fromJson(Map<String, dynamic> json) => Cat(
         id: json['id'] as String,
         name: json['name'] as String,
+        accountNumber: json['accountNumber'] as String,
         walletId: json['walletId'] as String,
         // Treats are whole units. Parsing as int rather than num keeps a
         // fractional value from silently entering the client.
@@ -79,6 +84,8 @@ class ApiProblem implements Exception {
         return 'Pick a different cat to send treats to.';
       case 'amount-not-positive':
         return 'Enter an amount greater than zero.';
+      case 'account-not-found':
+        return 'No cat has that account number.';
       case 'wallet-not-found':
         return 'That cat no longer exists. Pull to refresh.';
       case 'idempotency-key-reuse':

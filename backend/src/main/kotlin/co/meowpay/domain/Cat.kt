@@ -19,6 +19,12 @@ class Cat(
     val id: UUID,
     @Column(name = "name", nullable = false)
     val name: String,
+    /**
+     * The short identifier a sender types to reach this cat. Unique, and stable:
+     * it is what a payee confirmation is checked against.
+     */
+    @Column(name = "account_number", nullable = false, updatable = false)
+    val accountNumber: String,
     @Column(name = "avatar_url")
     val avatarUrl: String? = null,
     @Column(name = "created_at", nullable = false, updatable = false)

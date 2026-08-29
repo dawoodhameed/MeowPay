@@ -1,5 +1,6 @@
 package co.meowpay.web
 
+import co.meowpay.service.AccountNotFoundException
 import co.meowpay.service.AmountNotPositiveException
 import co.meowpay.service.IdempotencyKeyReuseException
 import co.meowpay.service.InsufficientFundsException
@@ -93,6 +94,18 @@ class ApiExceptionHandler {
         type = "invalid-cursor",
         title = "Invalid page cursor",
         detail = "Pass back the nextCursor value from a previous response, unmodified",
+        request = request,
+    )
+
+    @ExceptionHandler(AccountNotFoundException::class)
+    fun onAccountNotFound(
+        e: AccountNotFoundException,
+        request: HttpServletRequest,
+    ) = problem(
+        status = HttpStatus.NOT_FOUND,
+        type = "account-not-found",
+        title = "No cat with that account number",
+        detail = e.message,
         request = request,
     )
 
