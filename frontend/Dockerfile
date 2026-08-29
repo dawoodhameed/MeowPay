@@ -5,8 +5,6 @@ RUN npm install
 
 FROM node:20-bookworm-slim AS build
 WORKDIR /app
-ARG NEXT_PUBLIC_API_URL=http://localhost:8080
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
@@ -19,4 +17,7 @@ COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 EXPOSE 3000
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+# API_URL is read at request time by the rewrite in next.config.mjs, not baked in at
+# build time, so this same image can be pointed at any backend.
 CMD ["node", "server.js"]
