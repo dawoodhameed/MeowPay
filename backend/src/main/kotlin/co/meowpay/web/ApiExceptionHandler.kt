@@ -3,9 +3,11 @@ package co.meowpay.web
 import co.meowpay.service.AmountNotPositiveException
 import co.meowpay.service.IdempotencyKeyReuseException
 import co.meowpay.service.InsufficientFundsException
+import co.meowpay.service.InvalidCursorException
 import co.meowpay.service.SelfTransferException
 import co.meowpay.service.WalletNotFoundException
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.ConstraintViolationException
 import org.springframework.dao.CannotAcquireLockException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -45,6 +47,31 @@ class ApiExceptionHandler {
         ).apply { setProperty("errors", fieldErrors) }
     }
 
+    /**
+     * Constraint violations on query parameters and headers, as opposed to the request
+     * body -- `@Max` on `limit`, `@NotBlank` on the idempotency header. Spring raises a
+     * different exception for these than for body validation, and without this handler
+     * they surface as 500s: a caller asking for too large a page would be told the
+     * server broke rather than that the request was out of range.
+     */
+    @ExceptionHandler(ConstraintViolationException::class)
+    fun onConstraintViolation(
+        e: ConstraintViolationException,
+        request: HttpServletRequest,
+    ): ProblemDetail {
+        val violations =
+            e.constraintViolations.associate {
+                it.propertyPath.toString().substringAfterLast('.') to it.message
+            }
+        return problem(
+            status = HttpStatus.BAD_REQUEST,
+            type = "validation-failed",
+            title = "Request is not valid",
+            detail = "One or more request parameters are out of range",
+            request = request,
+        ).apply { setProperty("errors", violations) }
+    }
+
     @ExceptionHandler(WalletNotFoundException::class)
     fun onWalletNotFound(
         e: WalletNotFoundException,
@@ -56,6 +83,18 @@ class ApiExceptionHandler {
         detail = e.message,
         request = request,
     ).apply { setProperty("walletId", e.walletId.toString()) }
+
+    @ExceptionHandler(InvalidCursorException::class)
+    fun onInvalidCursor(
+        e: InvalidCursorException,
+        request: HttpServletRequest,
+    ) = problem(
+        status = HttpStatus.BAD_REQUEST,
+        type = "invalid-cursor",
+        title = "Invalid page cursor",
+        detail = "Pass back the nextCursor value from a previous response, unmodified",
+        request = request,
+    )
 
     @ExceptionHandler(SelfTransferException::class)
     fun onSelfTransfer(
