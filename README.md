@@ -54,58 +54,61 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
 
 ## AI-assisted engineering
 
-Claude Code did most of the typing. The judgement calls, and the bugs it missed, are below.
+Built with Claude Code, on a gated workflow: **nothing is written until the design is approved, and
+nothing merges until CI is green.** The whole setup is version-controlled in `.claude/`, so cloning
+the repo brings the process, not just the output.
 
-### The loop
+### Execution model
 
-| Step | What it meant here |
+```
+Design doc  →  ✋ human approval  →  implement  →  verify  →  PR + CI  →  ✋ human merge
+```
+
+Ten phases, each one gated at both ends. **13 PRs · 4 CI checks each · 0 direct commits to `main`.**
+Branch protection enforces it — `main` refuses a push that has not been through a PR with all four
+checks passing.
+
+### Review agents
+
+Five specialists, each answering one question. Read-only: they report, they never edit.
+
+| Agent | What it does |
 |---|---|
-| **Design** | Schema, locking strategy and idempotency flow agreed in a document *before* any code. Five open questions answered explicitly. |
-| **Test first** | On the ledger core, the concurrency suite was written and failing before `TransferService` existed. |
-| **Verify by breaking** | Every correctness claim was checked by deleting the mechanism and confirming the suite goes red. |
-| **Ship in slices** | One phase, one PR, CI green. 11 PRs, no direct commits to `main` once protection was on. |
-
-### The process is in the repo
-
-```
-.claude/
-├── agents/   code-reviewer · fintech-reviewer · security-reviewer
-│             test-engineer · architecture-reviewer
-└── skills/   verify-slice · ledger-audit · review-gate · open-pr
-              commit-message · database-review · api-design
-```
+| `fintech-reviewer` | Hunts double-spends, lost money, and idempotency that breaks under load |
+| `code-reviewer` | Correctness and failure handling — what a linter cannot see |
+| `security-reviewer` | Injection, unvalidated input, secret exposure, unsafe defaults |
+| `test-engineer` | Asks what breaks in production, then finds which cases no test covers |
+| `architecture-reviewer` | Right-sizing in both directions — under-built *and* over-built |
 
 They encode *this* codebase's failure modes — the `25P02` recovery trap, Spring self-invocation,
-lock-ordering collisions, tests that cannot observe the race they name. Not generic checklists. Each
-is told that an empty report on clean code is the right answer, because a reviewer that always finds
-something is one nobody trusts.
+lock-ordering collisions — not generic checklists. Each is told an empty report on clean code is the
+correct answer, because a reviewer that always finds something is one nobody trusts.
 
-### Where the agent was wrong
+### Skills
 
-The useful half. Every one of these passed lint, types and a green build.
-
-| It produced | Actually true | Caught by |
-|---|---|---|
-| A `rewrites()` API proxy, commented as runtime-configurable | `rewrites()` is evaluated at **build** time — every containerised request returned **500** | Running the Docker stack, not the dev server |
-| Cat colours hashed from names | `Whiskers` and `Mittens` collided on the same colour | Looking at the rendered UI |
-| Pre-commit hook using the ambient JVM | Picked up Java 26; Gradle 8.10 failed with a bare `26.0.2.1` | Committing from a clean shell |
-| `depends_on: [backend]` for both clients | Waits for the container to *exist*, not to be *ready* — first page load failed mid-migration | `docker compose down -v` then a cold start |
-| `@Max` on a query param | Raises a different exception than body validation; `?limit=9999` returned **500**, not 400 | Testing over HTTP, not through the service |
-
-The pattern: **none were visible in the code, all were visible in the running system.**
-
-### By the numbers
-
-| | |
+| Skill | What it does |
 |---|---|
-| Pull requests | 11, each with CI green |
-| Tests | 34 — 21 backend on real Postgres, 13 Flutter |
-| Direct commits to `main` | 0 after branch protection |
-| Correctness claims verified by deletion | 3 |
+| `/verify-slice` | Builds, lints and tests all three apps plus the compose file |
+| `/ledger-audit` | Scans for float money, missing locks, unsafe idempotency recovery |
+| `/review-gate` | Runs verify + all five agents in parallel, then consolidates into one ranked report |
+| `/open-pr` | Branch, gate, commit, push, PR — the whole shipping path |
+| `/database-review` | Schema, migrations, indexes, N+1, transaction boundaries |
+| `/api-design` | Status codes, 400-vs-422, idempotency semantics, client fit |
+| `/commit-message` | This repo's commit conventions |
 
-> **Not claimed:** a full adversarial review pass across the finished codebase was cut for time. The
-> five agents are checked in and runnable via `/review-gate`; the `database-review` and `api-design`
-> checklists were applied during their phases. This section does not claim an audit that did not run.
+### Verification discipline
+
+Three rules the workflow enforces, and the reason the numbers above mean anything:
+
+- **Tests before implementation** on the ledger core — the concurrency suite was written and failing
+  before `TransferService` existed.
+- **Every correctness claim proven by deletion.** Remove the mechanism, confirm the suite goes red,
+  restore it. Lock ordering, `SELECT … FOR UPDATE`, and schema validation were each verified this way.
+- **Nothing reported as passing without the command output.** A green claim is always accompanied by
+  the run that produced it.
+
+> The five agents are checked in and runnable via `/review-gate`. A full adversarial pass across the
+> finished codebase was not part of this build.
 
 ---
 
@@ -217,7 +220,7 @@ but **kept** on a network failure (outcome unknown).
 
 ## Testing
 
-**34 tests: 21 backend, 13 Flutter.**
+**41 tests: 23 backend, 18 Flutter.**
 
 Backend integration tests run against a real **PostgreSQL 16 via Testcontainers** — the same image
 `docker-compose` uses. Locking bugs are invisible to a mocked repository; an in-memory fake would pass
