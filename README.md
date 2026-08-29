@@ -52,6 +52,63 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
 
 ---
 
+## AI-assisted engineering
+
+Claude Code did most of the typing. The judgement calls, and the bugs it missed, are below.
+
+### The loop
+
+| Step | What it meant here |
+|---|---|
+| **Design** | Schema, locking strategy and idempotency flow agreed in a document *before* any code. Five open questions answered explicitly. |
+| **Test first** | On the ledger core, the concurrency suite was written and failing before `TransferService` existed. |
+| **Verify by breaking** | Every correctness claim was checked by deleting the mechanism and confirming the suite goes red. |
+| **Ship in slices** | One phase, one PR, CI green. 11 PRs, no direct commits to `main` once protection was on. |
+
+### The process is in the repo
+
+```
+.claude/
+├── agents/   code-reviewer · fintech-reviewer · security-reviewer
+│             test-engineer · architecture-reviewer
+└── skills/   verify-slice · ledger-audit · review-gate · open-pr
+              commit-message · database-review · api-design
+```
+
+They encode *this* codebase's failure modes — the `25P02` recovery trap, Spring self-invocation,
+lock-ordering collisions, tests that cannot observe the race they name. Not generic checklists. Each
+is told that an empty report on clean code is the right answer, because a reviewer that always finds
+something is one nobody trusts.
+
+### Where the agent was wrong
+
+The useful half. Every one of these passed lint, types and a green build.
+
+| It produced | Actually true | Caught by |
+|---|---|---|
+| A `rewrites()` API proxy, commented as runtime-configurable | `rewrites()` is evaluated at **build** time — every containerised request returned **500** | Running the Docker stack, not the dev server |
+| Cat colours hashed from names | `Whiskers` and `Mittens` collided on the same colour | Looking at the rendered UI |
+| Pre-commit hook using the ambient JVM | Picked up Java 26; Gradle 8.10 failed with a bare `26.0.2.1` | Committing from a clean shell |
+| `depends_on: [backend]` for both clients | Waits for the container to *exist*, not to be *ready* — first page load failed mid-migration | `docker compose down -v` then a cold start |
+| `@Max` on a query param | Raises a different exception than body validation; `?limit=9999` returned **500**, not 400 | Testing over HTTP, not through the service |
+
+The pattern: **none were visible in the code, all were visible in the running system.**
+
+### By the numbers
+
+| | |
+|---|---|
+| Pull requests | 11, each with CI green |
+| Tests | 34 — 21 backend on real Postgres, 13 Flutter |
+| Direct commits to `main` | 0 after branch protection |
+| Correctness claims verified by deletion | 3 |
+
+> **Not claimed:** a full adversarial review pass across the finished codebase was cut for time. The
+> five agents are checked in and runnable via `/review-gate`; the `database-review` and `api-design`
+> checklists were applied during their phases. This section does not claim an audit that did not run.
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -190,44 +247,6 @@ and a decoration:
 | Removed lock ordering | ❌ bidirectional contention test failed |
 | Replaced `FOR UPDATE` with a plain read | ❌ double-spend **and** conservation tests failed |
 | Both restored | ✅ all pass |
-
----
-
-## AI-assisted engineering
-
-Built with Claude Code as the primary tool. The workflow itself is **version-controlled in `.claude/`**,
-so cloning the repo brings the process, not just the output.
-
-```
-.claude/
-├── agents/     code-reviewer · fintech-reviewer · security-reviewer
-│               test-engineer · architecture-reviewer
-└── skills/     verify-slice · ledger-audit · review-gate · open-pr
-                commit-message · database-review · api-design
-```
-
-The reviewers encode the *specific* failure modes of this codebase — the `25P02` recovery trap, Spring
-self-invocation, lock-ordering collisions, tests that cannot observe the race they name — rather than
-generic checklists. Each is explicitly told that an empty report on clean code is the correct answer,
-because a reviewer that always finds something is one nobody trusts.
-
-**What the loop actually looked like:** design first and agree it before code (the schema, locking
-strategy and idempotency flow were settled in a document); tests before implementation on the ledger;
-then verification by trying to break what had just been built. Every phase landed as its own PR with
-CI green — 10 PRs, no direct commits to `main` once protection was on.
-
-**Honest scoping note:** the five review agents are checked in and runnable, and the `database-review`
-and `api-design` checklists were applied by hand during the relevant phases. A full adversarial pass
-across the finished codebase was **not** run — it was cut for time. The tooling is real; that
-particular audit is not something this README claims to have done.
-
-**Where the human judgement went.** The agent proposed a `rewrites()` proxy and asserted it was
-runtime-configurable; it is evaluated at build time and every containerised request returned 500. The
-agent's own comment claimed the opposite of the truth. Caught by running the Docker stack rather than
-trusting a green dev server. Similarly: colouring cats by hashing their name looked fine and collided
-on the first real dataset; the pre-commit hook picked up whatever JVM was ambient and failed
-opaquely; startup ordering waited on containers existing rather than being ready. **Every one of those
-was found by testing the real thing, not by reading the code.**
 
 ---
 
