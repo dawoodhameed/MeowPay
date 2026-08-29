@@ -1,15 +1,16 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @theme {
-  --color-ink: #07080a;
-  --color-surface: #0e1014;
-  --color-raised: #14171d;
-  --color-line: #22262f;
-  --color-muted: #7b8496;
-  --color-text: #e8eaef;
-  --color-credit: #3ddc97;
-  --color-debit: #ff7a6b;
-  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #08090c;
+  --color-surface: #0d0f14;
+  --color-raised: #12151b;
+  --color-line: #1e222b;
+  --color-line-soft: #171b22;
+  --color-muted: #6f7889;
+  --color-dim: #949cad;
+  --color-text: #eceef2;
+  --color-accent: #3ddc97;
+  --color-warn: #ff8b6b;
 }
 
 html,
@@ -17,11 +18,33 @@ body {
   background: var(--color-ink);
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Digits in the balance and amount columns must line up between rows; the
-   proportional figures the UI font ships by default make columns of numbers
-   visibly ragged. */
+/* Columns of figures must align between rows; the UI font's proportional digits
+   make a column of balances visibly ragged. */
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* A new ledger row announces itself once, then settles. Without it the table
+   changes under the reader with no acknowledgement that anything happened. */
+@keyframes settle {
+  from {
+    background-color: color-mix(in oklab, var(--color-accent) 14%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.row-new {
+  animation: settle 1.8s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-new,
+  .animate-pulse {
+    animation: none;
+  }
 }

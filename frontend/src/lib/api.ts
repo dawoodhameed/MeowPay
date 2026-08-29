@@ -47,13 +47,13 @@ export class ApiError extends Error {
 
 // Relative, so the request goes to this app and Next proxies it onward. Nothing
 // here needs to know where the backend lives.
-const BASE = '/api/v1';
+const BASE = "/api/v1";
 
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
     signal,
-    headers: { Accept: 'application/json' },
-    cache: 'no-store',
+    headers: { Accept: "application/json" },
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -61,7 +61,7 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
     // problem document -- a proxy timeout, say -- synthesise one so callers have a
     // single error shape to handle.
     const problem: ApiProblem = await response.json().catch(() => ({
-      type: 'about:blank',
+      type: "about:blank",
       title: `Request failed (${response.status})`,
       status: response.status,
     }));
@@ -72,7 +72,7 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
 }
 
 export const api = {
-  listCats: (signal?: AbortSignal) => get<Cat[]>('/cats', signal),
+  listCats: (signal?: AbortSignal) => get<Cat[]>("/cats", signal),
   listTransfers: (limit = 25, signal?: AbortSignal) =>
     get<LedgerPage>(`/transfers?limit=${limit}`, signal),
 };

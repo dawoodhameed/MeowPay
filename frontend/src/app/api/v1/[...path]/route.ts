@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
 /**
  * Proxies read requests through to the ledger API.
@@ -14,9 +14,9 @@ import { NextResponse } from 'next/server';
  * Proxying at all keeps the browser talking only to this origin: no CORS policy is
  * needed on the backend, and the API's location never reaches the client bundle.
  */
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-const API_URL = () => process.env.API_URL ?? 'http://localhost:8080';
+const API_URL = () => process.env.API_URL ?? "http://localhost:8080";
 
 export async function GET(
   request: Request,
@@ -24,12 +24,12 @@ export async function GET(
 ) {
   const { path } = await params;
   const { search } = new URL(request.url);
-  const target = `${API_URL()}/api/v1/${path.join('/')}${search}`;
+  const target = `${API_URL()}/api/v1/${path.join("/")}${search}`;
 
   try {
     const upstream = await fetch(target, {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
+      headers: { Accept: "application/json" },
+      cache: "no-store",
     });
 
     // Status and body pass through untouched, so the client still sees the API's own
@@ -37,7 +37,8 @@ export async function GET(
     return new NextResponse(upstream.body, {
       status: upstream.status,
       headers: {
-        'Content-Type': upstream.headers.get('Content-Type') ?? 'application/json',
+        "Content-Type":
+          upstream.headers.get("Content-Type") ?? "application/json",
       },
     });
   } catch {
@@ -45,8 +46,8 @@ export async function GET(
     // 502 says so honestly instead of reporting this app as broken.
     return NextResponse.json(
       {
-        type: 'https://meowpay.co/problems/upstream-unavailable',
-        title: 'Ledger API is unreachable',
+        type: "https://meowpay.co/problems/upstream-unavailable",
+        title: "Ledger API is unreachable",
         status: 502,
       },
       { status: 502 },
