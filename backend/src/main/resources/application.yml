@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: meowpay
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/meowpay}
+    username: ${DATABASE_USER:meowpay}
+    password: ${DATABASE_PASSWORD:meowpay}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+server:
+  port: 8080

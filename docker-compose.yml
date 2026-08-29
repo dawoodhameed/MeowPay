@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: meowpay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: meowpay
+      POSTGRES_USER: meowpay
+      POSTGRES_PASSWORD: meowpay
+    ports:
+      - "5432:5432"
+    volumes:
+      - meowpay-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meowpay -d meowpay"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: meowpay-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/meowpay
+      DATABASE_USER: meowpay
+      DATABASE_PASSWORD: meowpay
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    container_name: meowpay-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  mobile-web:
+    build: ./mobile
+    container_name: meowpay-mobile-web
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+
+volumes:
+  meowpay-pgdata:
