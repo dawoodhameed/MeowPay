@@ -45,12 +45,17 @@ services:
     depends_on:
       - backend
 
+  # The Flutter app compiled to web and served by nginx, which also proxies /api
+  # to the backend. Docker cannot render a native iOS or Android screen, so this
+  # is how the mobile UI is demonstrable from `docker compose up` alone.
   mobile-web:
     build: ./mobile
     container_name: meowpay-mobile-web
     restart: unless-stopped
     ports:
       - "8081:80"
+    depends_on:
+      - backend
 
 volumes:
   meowpay-pgdata:
