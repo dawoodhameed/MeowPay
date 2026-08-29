@@ -31,20 +31,23 @@ export function formatAbsolute(iso: string): string {
   });
 }
 
+/**
+ * The same five colours, in the same order, as the Flutter app's palette. A cat
+ * that is coral on the phone must be coral here; the two clients read as one
+ * product only if identity survives the platform boundary.
+ */
 export const AVATAR_COLORS = [
-  { bg: "rgba(61,220,151,0.13)", fg: "#3ddc97" },
-  { bg: "rgba(122,162,255,0.13)", fg: "#7aa2ff" },
-  { bg: "rgba(255,181,107,0.13)", fg: "#ffb56b" },
-  { bg: "rgba(214,140,255,0.13)", fg: "#d68cff" },
-  { bg: "rgba(255,139,107,0.13)", fg: "#ff8b6b" },
+  { bg: "rgba(255,123,102,0.14)", fg: "#C4462F" },
+  { bg: "rgba(22,74,100,0.12)", fg: "#164A64" },
+  { bg: "rgba(14,159,110,0.13)", fg: "#0B7D57" },
+  { bg: "rgba(140,91,216,0.13)", fg: "#6D3FB0" },
+  { bg: "rgba(224,138,46,0.14)", fg: "#A96114" },
 ];
 
 /**
- * Fallback for a name that is not in the current cat list -- a ledger row whose cat
- * has since been removed, say. Hashing alone is not good enough for the main case:
- * over a handful of names collisions are likely rather than rare, and "Whiskers" and
- * "Mittens" did in fact land on the same colour, which defeats the point of colouring
- * them at all. Assignment by position is what guarantees the visible set is distinct.
+ * Fallback for a name not in the current cat list. Hashing alone is not good
+ * enough for the main case: over a handful of names collisions are likely rather
+ * than rare, which is why the visible set is assigned by position instead.
  */
 export function fallbackAvatarColor(name: string) {
   let hash = 0;
@@ -56,4 +59,9 @@ export function fallbackAvatarColor(name: string) {
 
 export function initialOf(name: string): string {
   return name.charAt(0).toUpperCase();
+}
+
+/** Grouped for reading, matching how the mobile app prints them: `1000 0001`. */
+export function formatAccountNumber(raw: string): string {
+  return raw.length === 8 ? `${raw.slice(0, 4)} ${raw.slice(4)}` : raw;
 }

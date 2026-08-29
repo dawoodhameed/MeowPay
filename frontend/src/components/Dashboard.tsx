@@ -43,7 +43,7 @@ export function Dashboard() {
             <h1 className="text-[19px] font-semibold tracking-tight">
               MeowPay Ledger
             </h1>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
+            <p className="mt-1 text-sm text-[var(--color-slate)]">
               Every treat that has moved between cats.
             </p>
           </div>
@@ -73,8 +73,8 @@ export function Dashboard() {
               created or destroyed. Showing the total makes that invariant something the
               reader can watch hold, instead of something they have to take on trust. */}
             {totalTreats !== null && (
-              <p className="mt-3 text-xs text-[var(--color-muted)]">
-                <span className="tabular font-medium text-[var(--color-dim)]">
+              <p className="mt-3 text-xs text-[var(--color-slate)]">
+                <span className="tabular font-bold text-[var(--color-navy)]">
                   {formatTreats(totalTreats)}
                 </span>{" "}
                 treats in circulation — constant, since transfers move treats
@@ -82,18 +82,18 @@ export function Dashboard() {
               </p>
             )}
 
-            <section className="mt-9 overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
+            <section className="mt-9 overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)]">
               <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-3">
-                <h2 className="text-sm font-medium">Transactions</h2>
+                <h2 className="text-sm font-bold">Transactions</h2>
                 {ledger.data && ledger.data.items.length > 0 && (
-                  <span className="tabular text-xs text-[var(--color-muted)]">
+                  <span className="tabular text-xs text-[var(--color-slate)]">
                     {ledger.data.items.length}
                     {ledger.data.nextCursor ? "+" : ""}
                   </span>
                 )}
               </div>
               {!ledger.data ? (
-                <div className="px-5 py-16 text-center text-sm text-[var(--color-muted)]">
+                <div className="px-5 py-16 text-center text-sm text-[var(--color-slate)]">
                   Loading ledger…
                 </div>
               ) : (
@@ -164,15 +164,17 @@ function LiveIndicator({
     : null;
 
   return (
-    <div className="flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-raised)] px-2.5 py-1 text-xs text-[var(--color-muted)]">
+    <div className="flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-slate)]">
       <span className="relative flex h-1.5 w-1.5">
         {!degraded && (
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent)] opacity-60" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-positive)] opacity-60" />
         )}
         <span
           className="relative inline-flex h-1.5 w-1.5 rounded-full"
           style={{
-            background: degraded ? "var(--color-warn)" : "var(--color-accent)",
+            background: degraded
+              ? "var(--color-coral)"
+              : "var(--color-positive)",
           }}
         />
       </span>
@@ -187,14 +189,14 @@ function LiveIndicator({
 
 function ConnectionError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="mt-10 rounded-xl border border-[var(--color-warn)]/25 bg-[var(--color-warn)]/[0.04] px-5 py-10 text-center">
-      <p className="text-sm font-medium">Cannot reach the ledger API</p>
-      <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-[var(--color-muted)]">
+    <div className="mt-10 rounded-2xl bg-[var(--color-blush)] px-5 py-10 text-center">
+      <p className="text-sm font-bold">Cannot reach the ledger API</p>
+      <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-[var(--color-slate)]">
         The backend is not responding. Check that it is running, then try again.
       </p>
       <button
         onClick={onRetry}
-        className="mt-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-raised)] px-3.5 py-1.5 text-xs font-medium transition-colors hover:border-[var(--color-muted)]/50 focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:outline-none"
+        className="mt-5 rounded-xl bg-[var(--color-coral)] px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--color-coral)] focus-visible:ring-offset-2 focus-visible:outline-none"
       >
         Retry now
       </button>
