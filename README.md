@@ -32,6 +32,34 @@ with its real response codes and can be called from the page. The OpenAPI docume
 
 Seeded: **Whiskers 1000**, **Mittens 500**, **Luna 250**.
 
+First build takes **5–10 minutes** and pulls roughly **3 GB** of images — the Flutter SDK image is
+the bulk of it. Later runs start in about a minute.
+
+<details>
+<summary>If something does not start</summary>
+
+**A port is already in use.** `docker compose up` fails outright rather than degrading, and `5432` is
+very often taken by a local Postgres. Every host port is overridable:
+
+```bash
+POSTGRES_PORT=5433 WEB_PORT=3100 docker compose up --build
+```
+
+Or copy `.env.example` to `.env` and edit it. This only changes where the stack is reachable *from
+your machine* — the services talk to each other over the compose network on fixed internal ports, so
+nothing else needs adjusting.
+
+**`no space left on device` during the build.** The Flutter builder image is large. `docker system
+prune -af` clears reclaimable space.
+
+**The build fails on a network error.** Gradle and npm both fetch dependencies during the image build,
+and a dropped connection surfaces as `Remote host terminated the handshake` or an npm `ETIMEDOUT`.
+Re-run the same command; it resumes from cache.
+
+**Reset everything.** `docker compose down -v` destroys the database volume, so the next `up`
+re-runs every migration and re-seeds from scratch.
+</details>
+
 <details>
 <summary>Running natively, without Docker</summary>
 

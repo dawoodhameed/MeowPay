@@ -8,7 +8,10 @@ services:
       POSTGRES_USER: meowpay
       POSTGRES_PASSWORD: meowpay
     ports:
-      - "5432:5432"
+      # Host ports are overridable because a collision makes `up` fail outright, and
+      # 5432 in particular is very often already taken by a local Postgres. Override
+      # per-run -- POSTGRES_PORT=5433 docker compose up -- or in a .env file.
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - meowpay-pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +29,7 @@ services:
       DATABASE_USER: meowpay
       DATABASE_PASSWORD: meowpay
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,7 +54,7 @@ services:
       # so no CORS policy is needed on the backend.
       API_URL: http://backend:8080
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     depends_on:
       backend:
         condition: service_healthy
@@ -64,7 +67,7 @@ services:
     container_name: meowpay-mobile-web
     restart: unless-stopped
     ports:
-      - "8081:80"
+      - "${MOBILE_PORT:-8081}:80"
     depends_on:
       backend:
         condition: service_healthy
