@@ -20,10 +20,15 @@ for the backend to report healthy before they come up.
 | **Web ledger** | http://localhost:3000 | Every transfer, live |
 | **Mobile app** | http://localhost:8081 | The Flutter app, compiled to web |
 | **API** | http://localhost:8080 | Spring Boot |
+| **API docs** | http://localhost:8080/docs | Swagger UI — browse and call every endpoint |
 | **Health** | http://localhost:8080/actuator/health | Includes the datasource |
 
 **Try the loop:** open both. Send treats at `:8081`, and watch them appear at `:3000` within a second,
 with balances moving and the total in circulation staying constant.
+
+**Or drive the API directly** at [`/docs`](http://localhost:8080/docs) — every endpoint is documented
+with its real response codes and can be called from the page. The OpenAPI document itself is at
+`/v3/api-docs`.
 
 Seeded: **Whiskers 1000**, **Mittens 500**, **Luna 250**.
 
