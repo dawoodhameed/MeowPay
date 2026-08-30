@@ -24,6 +24,19 @@ server:
 # Only the health endpoint is exposed. Actuator ships a good deal more -- env,
 # beans, mappings -- and none of it should be reachable on an unauthenticated
 # service just because the dependency is present.
+springdoc:
+  swagger-ui:
+    # /docs reads better than the default /swagger-ui.html for something a reviewer
+    # is told to open.
+    path: /docs
+    # Endpoints listed in the order they are declared rather than alphabetically, so
+    # the transfer -- the point of the API -- is not sorted below the reads.
+    operations-sorter: alpha
+    tags-sorter: alpha
+    display-request-duration: true
+  api-docs:
+    path: /v3/api-docs
+
 management:
   endpoints:
     web:
